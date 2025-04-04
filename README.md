@@ -10,7 +10,7 @@ pip install promptify-cli
 
 ## Demo
 
-![Promptify CLI Demo](assets/promptify_example.gif)
+![Promptify CLI Demo](https://raw.githubusercontent.com/olliepro/promptify/refs/heads/main/assets/promptify_example.gif)
 
 ## Basic Usage
 
