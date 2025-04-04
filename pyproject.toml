@@ -9,8 +9,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "promptify-cli" 
-version = "0.1.3"      
-description = "Interactive CLI select files, generate markdown suitable for LLM prompts, and copy it to the clipboard."
+version = "0.1.6"      
+description = "Interactive CLI to select files, generate markdown for LLM prompts, and copy it to the clipboard."
 readme = "README.md"   
 requires-python = ">=3.8" 
 license = "MIT"

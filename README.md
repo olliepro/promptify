@@ -17,6 +17,7 @@ pip install promptify-cli
 ### Default Behavior
 - Run `promptify` to interactively select files and generate markdown for your clipboard
 - Supports `.promptignore` files (works like `.gitignore`)
+- Offers to add a basic `.promptignore` if none is found at project root. (First time only)
 - Includes a file tree to depth 4, excluding ignored files
 - Selected files (highlighted green) are md-formatted
 - Shows LOC and GPT-4o token counts as you use the UI
@@ -70,3 +71,7 @@ def bar(foo):
 
 ```
 ````
+
+## Development
+
+This package is self-contained in 1 file at `src/promptify/cli.py`. It's in a state that the UI and features meet my needs, but if you wish to modify the functionality, add more args, etc. drop me a github issue (slow response time) or feel free to submit a merge request!

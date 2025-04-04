@@ -67,7 +67,7 @@ def save_state(selected_paths: set, cwd: Path):
         print(f"Warning: Could not save state due to path issue: {e}")
 
 
-def get_ignore_matcher(start_dir: Path) -> callable:
+def get_ignore_matcher(start_dir: Path, clear_state: bool) -> callable:
     ignore_file = start_dir / IGNORE_FILE_NAME
     if ignore_file.is_file():
         try:
@@ -76,6 +76,85 @@ def get_ignore_matcher(start_dir: Path) -> callable:
             print(
                 f"Warning: Could not read {ignore_file}. Proceeding without ignore rules. Error: {e}"
             )
+    else:
+        # Check if we've already offered to create a .promptignore file
+        ensure_config_dir()
+        promptignore_state_file = CONFIG_DIR / "promptignore_offered.txt"
+
+        if not promptignore_state_file.exists() or clear_state:
+            # First time - ask if they want a default .promptignore file
+            answer = typer.confirm(
+                f"No {typer.style(IGNORE_FILE_NAME, bold=True)} file found. Would you "
+                "like to create one with default rules?",
+                default=False,
+            )
+
+            # Mark that we've offered, regardless of answer
+            try:
+                with open(promptignore_state_file, "w") as f:
+                    f.write("offered")
+            except Exception:
+                pass  # Silently continue if we can't write the state
+
+            if answer:
+                try:
+                    default_ignore_content = """# Default .promptignore file
+# Version control
+.git/
+.gitignore
+.svn/
+.hg/
+
+# Dependencies
+node_modules/
+venv/
+env/
+.env/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts and logs
+dist/
+build/
+*.o
+*.so
+*.dll
+*.exe
+*.out
+*.log
+logs/
+log/
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Large data files
+*.csv
+*.tsv
+*.pkl
+*.h5
+*.parquet
+*.sqlite
+*.db
+
+# Add your own patterns here
+"""
+                    with open(start_dir / IGNORE_FILE_NAME, "w") as f:
+                        f.write(default_ignore_content)
+                    typer.echo(f"Created {IGNORE_FILE_NAME} with default rules.")
+                    return parse_gitignore(start_dir / IGNORE_FILE_NAME)
+                except Exception as e:
+                    typer.echo(
+                        f"Warning: Could not create {IGNORE_FILE_NAME}. Proceeding without ignore rules. Error: {e}"
+                    )
     return lambda x: False
 
 
@@ -788,7 +867,7 @@ def main(
     typer.echo(f"Scanning directory: {path} (max depth: {depth})")
 
     try:
-        ignore_matcher = get_ignore_matcher(path)
+        ignore_matcher = get_ignore_matcher(path, clear_state)
     except Exception as e:
         typer.secho(f"Error loading .promptignore: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
