@@ -2,13 +2,18 @@
 requires = ["setuptools>=61.0"] 
 build-backend = "setuptools.build_meta"
 
+[project.urls]
+"Repository" = "https://github.com/olliepro/promptify"
+"Bug Tracker" = "https://github.com/olliepro/promptify/issues"
+"Documentation" = "https://github.com/olliepro/promptify#readme"
+
 [project]
 name = "promptify-cli" 
-version = "0.1.2"      
+version = "0.1.3"      
 description = "Interactive CLI select files, generate markdown suitable for LLM prompts, and copy it to the clipboard."
 readme = "README.md"   
 requires-python = ">=3.8" 
-license = {text = "MIT"} 
+license = "MIT"
 authors = [
     {name = "Oliver Proudfoot", email = "oliverproudfoot@gmail.com"},
 ]
@@ -17,7 +22,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent", 
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -45,7 +49,7 @@ dependencies = [
 
 
 [project.scripts]
-promptify = "promptify:app"
+promptify = "promptify.cli:app"
 
 
 
