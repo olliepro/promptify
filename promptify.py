@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import mimetypes
 import pyperclip
-from gitignore_parser import parse_gitignore  # CORRECTED IMPORT
+from gitignore_parser import parse_gitignore
 import tiktoken
 import nbformat
 from nbconvert import MarkdownExporter
@@ -21,7 +21,6 @@ from appdirs import user_config_dir
 import chardet
 from collections import namedtuple, defaultdict
 
-# --- Configuration ---
 APP_NAME = "PromptSelector"
 CONFIG_DIR = Path(user_config_dir(APP_NAME, ""))
 STATE_FILE = CONFIG_DIR / "state.json"
@@ -29,13 +28,6 @@ DEFAULT_DEPTH = 4
 IGNORE_FILE_NAME = ".promptignore"
 TIKTOKEN_ENCODING = "o200k_base"
 
-# --- Logging Setup ---
-# log_file = CONFIG_DIR / "prompt_selector.log"
-# ensure_config_dir()
-# logging.basicConfig(level=logging.DEBUG, filename=log_file, filemode='w', format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-# log = logging.getLogger(__name__)
-
-# --- Tiktoken Setup ---
 try:
     encoding = tiktoken.get_encoding(TIKTOKEN_ENCODING)
 except Exception as e:
@@ -45,8 +37,6 @@ except Exception as e:
     encoding = None
 
 
-# --- Helper Functions ---
-# (No changes needed in helper functions up to TUI)
 def ensure_config_dir():
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -58,7 +48,6 @@ def load_state() -> set:
             with open(STATE_FILE, "r") as f:
                 return set(json.load(f))
         except (json.JSONDecodeError, IOError) as e:
-            # log.error(f"Error loading state file: {e}")
             print(
                 f"Warning: Could not load previous state from {STATE_FILE}. Starting fresh."
             )
@@ -73,27 +62,20 @@ def save_state(selected_paths: set, cwd: Path):
         with open(STATE_FILE, "w") as f:
             json.dump(relative_paths, f, indent=2)
     except IOError as e:
-        # log.error(f"Error saving state file: {e}")
         print(f"Warning: Could not save state to {STATE_FILE}. Error: {e}")
     except ValueError as e:
-        # log.error(f"Error making path relative for saving state: {e}")
         print(f"Warning: Could not save state due to path issue: {e}")
 
 
 def get_ignore_matcher(start_dir: Path) -> callable:
     ignore_file = start_dir / IGNORE_FILE_NAME
-    # log.debug(f"Checking for ignore file: {ignore_file}")
     if ignore_file.is_file():
         try:
-            # log.info(f"Loading ignore rules from: {ignore_file}")
-            # Use the corrected import name
             return parse_gitignore(ignore_file)
         except Exception as e:
-            # log.error(f"Error reading {ignore_file}: {e}")
             print(
                 f"Warning: Could not read {ignore_file}. Proceeding without ignore rules. Error: {e}"
             )
-    # log.debug("No .promptignore file found.")
     return lambda x: False
 
 
@@ -165,22 +147,18 @@ def is_likely_text_file(file_path: Path) -> bool:
         and mime_type != "application/octet-stream"
         and file_path.suffix != ".ipynb"
     ):
-        # log.debug(f"Ignoring {file_path} due to MIME type: {mime_type}")
         return False
     try:
         with open(file_path, "rb") as f:
             chunk = f.read(1024)
             if b"\x00" in chunk:
-                # log.debug(f"Ignoring {file_path} due to null byte.")
                 return False
             try:
                 detected_encoding = chardet.detect(chunk)["encoding"]
                 chunk.decode(detected_encoding or "utf-8")
             except (UnicodeDecodeError, TypeError):
-                # log.debug(f"Ignoring {file_path} due to decode error.")
                 return False
     except IOError:
-        # log.warning(f"Could not read {file_path} for text check.")
         return False
     return True
 
@@ -194,7 +172,6 @@ def convert_ipynb_to_markdown(file_path: Path) -> str:
         header = f"--- Content from {file_path.name} ---\n\n"
         return header + body
     except Exception as e:
-        # log.error(f"Error converting notebook {file_path}: {e}")
         return f"Error converting notebook {file_path.name}: {e}"
 
 
@@ -213,7 +190,6 @@ def get_file_content(file_path: Path) -> str:
             ) as f:
                 return f.read()
         except Exception as e:
-            # log.error(f"Error reading file {file_path}: {e}")
             return f"Error reading file {file_path.name}: {e}"
 
 
@@ -232,20 +208,16 @@ def count_lines(text: str) -> int:
     return text.count("\n") + 1 if text else 0
 
 
-# --- Markdown Generation Helpers ---
-
-
 def generate_pretty_tree_for_markdown(all_paths: set[Path], cwd: Path) -> str:
     """
     Generates a pretty file tree string for markdown output, showing all
     discovered paths up to the scanned depth. Excludes .promptignore.
     """
-    # log.debug(f"Generating pretty markdown tree for {len(all_paths)} paths.")
     tree_lines = []
     parent_map = defaultdict(list)
 
     for p in all_paths:
-        if p == cwd or p.name == IGNORE_FILE_NAME:
+        if p == cwd or p.name in IGNORE_FILE_NAME:
             continue
         parent_map[p.parent].append(p)
 
@@ -274,7 +246,6 @@ def generate_pretty_tree_for_markdown(all_paths: set[Path], cwd: Path) -> str:
 
     tree_lines.append(cwd.name + "/")
     dfs_build_tree(cwd)
-    # log.debug(f"Generated markdown tree with {len(tree_lines)} lines.")
     return "\n".join(tree_lines)
 
 
@@ -282,7 +253,6 @@ def generate_markdown_output(
     all_scanned_paths: set[Path], selected_paths: set[Path], cwd: Path, max_depth: int
 ) -> tuple[str, int]:
     """Generates the final markdown string and calculates total tokens."""
-    # log.debug(f"Generating markdown. Scanned paths: {len(all_scanned_paths)}, Selected: {len(selected_paths)}")
 
     tree_str = generate_pretty_tree_for_markdown(all_scanned_paths, cwd)
     content_blocks = []
@@ -328,7 +298,6 @@ def generate_markdown_output(
     return markdown_string, total_tokens
 
 
-# --- TUI Application ---
 DisplayItem = namedtuple("DisplayItem", ["path", "is_dir", "depth"])
 
 
@@ -372,12 +341,10 @@ class FileSelectorTUI:
             }
         )
 
-        # --- Key Bindings ---
         kb = KeyBindings()
 
         @kb.add("up")
         def _(event):
-            # Simply move the index up if possible. The Window will handle scrolling.
             if self.current_index > 0:
                 self.current_index -= 1
                 self.message = ""
@@ -385,14 +352,12 @@ class FileSelectorTUI:
 
         @kb.add("down")
         def _(event):
-            # Simply move the index down if possible. The Window will handle scrolling.
             max_index = len(self.visible_items) - 1
             if self.current_index < max_index:
                 self.current_index += 1
                 self.message = ""
                 event.app.invalidate()
 
-        # Other keys remain the same
         @kb.add("enter")
         def _(event):
             if not self.visible_items:
@@ -482,7 +447,6 @@ class FileSelectorTUI:
             self.running = False
             event.app.exit()
 
-        # --- Layout ---
         header_text = FormattedText(
             [
                 ("class:header", " Prompt Selector "),
@@ -522,11 +486,6 @@ class FileSelectorTUI:
             mouse_support=True,
         )
 
-    # (_get_selectable_files_in_dir, _get_selected_count_in_dir,
-    #  _build_display_items_dfs_with_root, _set_initial_collapse_state,
-    #  _rebuild_visible_items, _recalculate_counts, _get_status_text,
-    #  _get_formatted_text, run
-    #  remain the same as previous version)
     def _get_selectable_files_in_dir(self, dir_path: Path) -> set[Path]:
         selectable_files = set()
         for item in self.display_items:
@@ -795,8 +754,6 @@ class FileSelectorTUI:
         return self.selected_paths
 
 
-# --- Typer CLI Application ---
-# (app definition and main command remain the same)
 app = typer.Typer(
     help="Interactive CLI to select files, generate markdown, and copy to clipboard."
 )
@@ -828,35 +785,25 @@ def main(
     (with collapsible folders sorted dirs>files>dotfiles), and copies formatted
     markdown of selected files to the clipboard.
     """
-    # log.info(f"--- Prompt Selector Started ---")
-    # log.info(f"Command arguments: depth={depth}, path={path}, clear_state={clear_state}")
     typer.echo(f"Scanning directory: {path} (max depth: {depth})")
 
-    # 1. Load Ignore Rules
     try:
         ignore_matcher = get_ignore_matcher(path)
     except Exception as e:
         typer.secho(f"Error loading .promptignore: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
-    # 2. Load Previous State
     initial_selection_rel_paths = load_state() if not clear_state else set()
     initial_selection_abs = set()
     if initial_selection_rel_paths:
-        # log.debug(f"Loaded {len(initial_selection_rel_paths)} relative paths from state.")
+
         for rel_path_str in initial_selection_rel_paths:
             abs_path = (path / rel_path_str).resolve()
             if abs_path.is_file():
                 initial_selection_abs.add(abs_path)
-            # else:
-            # log.warning(f"Ignoring stale path from state file: {abs_path}")
-    # else:
-    # log.debug("No previous state found or clear_state=True.")
 
-    # 3. Scan Directory using os.walk - Collect ALL valid paths
     all_scanned_paths = set()
     all_found_files = []
-    # log.debug(f"Starting os.walk scan from {path} with depth {depth}")
 
     for root, dirs, files in os.walk(path, topdown=True, followlinks=False):
         root_path = Path(root).resolve()
@@ -864,20 +811,15 @@ def main(
             relative_root = root_path.relative_to(path)
             current_depth = len(relative_root.parts)
         except ValueError:
-            # log.warning(f"Skipping walk in {root_path} as it's not relative to start path {path}")
             dirs[:] = []
             continue
 
-        # log.debug(f"Walking: {root_path}, Depth: {current_depth}, Dirs: {dirs}, Files: {files}")
-
         if current_depth > depth:
-            # log.debug(f"Pruning walk at {root_path} due to depth {current_depth} > {depth}")
             dirs[:] = []
             files[:] = []
             continue
         elif root_path != path:
             if ignore_matcher(str(root_path)) or root_path.name == IGNORE_FILE_NAME:
-                # log.debug(f"Ignoring directory descent into {root_path} due to ignore rules or name")
                 dirs[:] = []
                 files[:] = []
                 continue
@@ -896,44 +838,33 @@ def main(
                 ):
                     dirs.append(d)
                     all_scanned_paths.add(dir_abs_path)
-                # else: log.debug(f"Ignoring directory descent: {dir_abs_path} due to ignore rules or name")
-            # else: log.debug(f"Skipping directory {dir_abs_path} due to depth")
 
         for f in files:
             file_abs_path = root_path / f
             file_rel_path = file_abs_path.relative_to(path)
             if file_abs_path.name == IGNORE_FILE_NAME:
-                # log.debug(f"Skipping ignore file: {file_abs_path}")
                 continue
             if len(file_rel_path.parts) > depth:
-                # log.debug(f"Ignoring file {file_abs_path} due to depth")
                 continue
             if ignore_matcher(str(file_abs_path)):
-                # log.debug(f"Ignoring file: {file_abs_path} due to ignore rules")
                 continue
             all_scanned_paths.add(file_abs_path)
             if is_likely_text_file(file_abs_path):
-                # log.debug(f"Adding text file: {file_abs_path}")
                 all_found_files.append(file_abs_path)
-            # else: log.debug(f"Ignoring non-text file: {file_abs_path}")
 
     if not all_found_files:
         typer.echo(
             f"No suitable text files found within depth {depth} respecting ignore rules."
         )
-        # log.warning("No suitable text files found.")
         raise typer.Exit()
 
     typer.echo(
         f"Found {len(all_found_files)} text files ({len(all_scanned_paths)} total items). Launching selector..."
     )
-    # log.info(f"Found {len(all_found_files)} files. Initial selection size: {len(initial_selection_abs)}")
 
-    # 4. Run Interactive TUI
     selector_tui = FileSelectorTUI(all_found_files, initial_selection_abs, path)
     final_selected_paths = selector_tui.run()
 
-    # 5. Process Results
     if final_selected_paths is None:
         typer.echo("Operation cancelled by user.")
         raise typer.Exit()
@@ -944,9 +875,7 @@ def main(
         raise typer.Exit()
 
     typer.echo(f"Processing {len(final_selected_paths)} selected files...")
-    # log.info(f"Processing {len(final_selected_paths)} selected files.")
 
-    # 6. Generate Markdown using ALL scanned paths for the tree
     try:
         markdown_output, final_token_count = generate_markdown_output(
             all_scanned_paths=all_scanned_paths,
@@ -955,18 +884,14 @@ def main(
             max_depth=depth,
         )
         token_unit = "tokens" if encoding else "characters"
-        # log.info(f"Generated markdown. Length: {len(markdown_output)}, Tokens/Chars: {final_token_count}")
+
     except Exception as e:
-        # log.error(f"Error generating markdown output: {e}", exc_info=True)
         typer.echo(f"Error: Could not generate final markdown content: {e}", err=True)
         raise typer.Exit(code=1)
 
-    # 7. Copy to Clipboard
     try:
         pyperclip.copy(markdown_output)
-        # log.info("Copied markdown to clipboard.")
     except Exception as e:
-        # log.error(f"Error copying to clipboard: {e}", exc_info=True)
         if "clipboard mechanism not found" in str(e).lower():
             typer.echo(
                 f"Error: Pyperclip couldn't find a copy/paste mechanism.", err=True
@@ -981,20 +906,14 @@ def main(
         typer.echo("--- End Content ---")
         raise typer.Exit(code=1)
 
-    # 8. Save Final State
     save_state(final_selected_paths, path)
-    # log.info(f"Saved final state with {len(final_selected_paths)} files.")
 
-    # 9. Success Message
     typer.secho(
         f"\nSuccess! Formatted content for {len(final_selected_paths)} files ({final_token_count} {token_unit}) copied to clipboard.",
         fg=typer.colors.GREEN,
         bold=True,
     )
-    # log.info("--- Prompt Selector Finished Successfully ---")
 
 
 if __name__ == "__main__":
-    # ensure_config_dir() # Ensure early if logging enabled
-
     app()
