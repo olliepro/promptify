@@ -15,11 +15,11 @@ pip install promptify-cli
 ## Basic Usage
 
 ### Default Behavior
-- `promptify` command, without any args, provides a UI to select files from the CWD to copy to your clipboard.
-- respects a `.promptignore` file... identical to `.gitignore`.
-- The filetree copied to the clipboard shows all files and folder expanded to a depth of 4 (omitting `.promptignore` files).
-- The files selected in the UI (green) will be markdown formatted and copied with the filetree to your clipboard when finished.
-- Info about LOC and Total Tokens (GPT-4o) is shown as you select files.
+- Run `promptify` to interactively select files and generate markdown for your clipboard
+- Supports `.promptignore` files (works like `.gitignore`)
+- Includes a file tree to depth 4, excluding ignored files
+- Selected files (highlighted green) are md-formatted
+- Shows LOC and GPT-4o token counts as you use the UI
 
 ### Help
 
