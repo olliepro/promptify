@@ -20,6 +20,7 @@ from prompt_toolkit.data_structures import Point
 from appdirs import user_config_dir
 import chardet
 from collections import namedtuple, defaultdict
+import re
 
 APP_NAME = "PromptSelector"
 CONFIG_DIR = Path(user_config_dir(APP_NAME, ""))
@@ -77,25 +78,19 @@ def get_ignore_matcher(start_dir: Path, clear_state: bool) -> callable:
                 f"Warning: Could not read {ignore_file}. Proceeding without ignore rules. Error: {e}"
             )
     else:
-        # Check if we've already offered to create a .promptignore file
         ensure_config_dir()
         promptignore_state_file = CONFIG_DIR / "promptignore_offered.txt"
-
         if not promptignore_state_file.exists() or clear_state:
-            # First time - ask if they want a default .promptignore file
             answer = typer.confirm(
                 f"No {typer.style(IGNORE_FILE_NAME, bold=True)} file found. Would you "
                 "like to create one with default rules?",
                 default=False,
             )
-
-            # Mark that we've offered, regardless of answer
             try:
                 with open(promptignore_state_file, "w") as f:
                     f.write("offered")
             except Exception:
-                pass  # Silently continue if we can't write the state
-
+                pass
             if answer:
                 try:
                     default_ignore_content = """# Default .promptignore file
@@ -287,11 +282,21 @@ def count_lines(text: str) -> int:
     return text.count("\n") + 1 if text else 0
 
 
+def fence_code_block(content: str, lang: str = "") -> str:
+    """
+    Wraps content in a code block using a fence that adapts if the content
+    already contains triple backticks.
+    """
+    fence = "```"
+    if "```" in content:
+        matches = re.findall(r"(`+)", content)
+        if matches:
+            max_len = max(len(match) for match in matches)
+            fence = "`" * (max(max_len + 1, 3))
+    return f"{fence}{lang}\n{content}\n{fence}"
+
+
 def generate_pretty_tree_for_markdown(all_paths: set[Path], cwd: Path) -> str:
-    """
-    Generates a pretty file tree string for markdown output, showing all
-    discovered paths up to the scanned depth. Excludes .promptignore.
-    """
     tree_lines = []
     parent_map = defaultdict(list)
 
@@ -332,7 +337,6 @@ def generate_markdown_output(
     all_scanned_paths: set[Path], selected_paths: set[Path], cwd: Path, max_depth: int
 ) -> tuple[str, int]:
     """Generates the final markdown string and calculates total tokens."""
-
     tree_str = generate_pretty_tree_for_markdown(all_scanned_paths, cwd)
     content_blocks = []
     total_content_for_tokens = ""
@@ -344,7 +348,7 @@ def generate_markdown_output(
         relative_path_str = str(file_path.relative_to(cwd))
         content = get_file_content(file_path)
         file_block_for_tokens = (
-            f"\n\n---\n\nFile: {relative_path_str}\n\n```\n{content}\n```\n\n"
+            f"\n\n---\n\nFile: {relative_path_str}\n\n{fence_code_block(content)}\n\n"
         )
         total_content_for_tokens += file_block_for_tokens
         lang = file_path.suffix.lstrip(".").lower()
@@ -364,7 +368,7 @@ def generate_markdown_output(
         }
         md_lang = lang_map.get(lang, "")
         content_blocks.append(
-            f"## File: `{relative_path_str}`\n\n```{md_lang}\n{content}\n```"
+            f"## File: `{relative_path_str}`\n\n{fence_code_block(content, md_lang)}"
         )
 
     markdown_string = (
@@ -875,7 +879,6 @@ def main(
     initial_selection_rel_paths = load_state() if not clear_state else set()
     initial_selection_abs = set()
     if initial_selection_rel_paths:
-
         for rel_path_str in initial_selection_rel_paths:
             abs_path = (path / rel_path_str).resolve()
             if abs_path.is_file():
@@ -963,7 +966,6 @@ def main(
             max_depth=depth,
         )
         token_unit = "tokens" if encoding else "characters"
-
     except Exception as e:
         typer.echo(f"Error: Could not generate final markdown content: {e}", err=True)
         raise typer.Exit(code=1)
