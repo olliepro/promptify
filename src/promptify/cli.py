@@ -21,6 +21,7 @@ from appdirs import user_config_dir
 import chardet
 from collections import namedtuple, defaultdict
 import re
+import subprocess
 
 APP_NAME = "PromptSelector"
 CONFIG_DIR = Path(user_config_dir(APP_NAME, ""))
@@ -153,6 +154,28 @@ log/
     return lambda x: False
 
 
+def get_mime_type(filepath: Path) -> str:
+    """
+    Attempts to get the MIME type of a file using a subprocess call to `file`.
+    If that fails, falls back to mimetypes.guess_type.
+    """
+    try:
+        result = subprocess.run(
+            ["file", "--mime-type", "-b", str(filepath)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        mime = result.stdout.strip()
+        if mime:
+            return mime
+    except Exception:
+        pass
+    mime, _ = mimetypes.guess_type(str(filepath))
+    return mime or "application/octet-stream"
+
+
 def is_likely_text_file(file_path: Path) -> bool:
     if not file_path.is_file():
         return False
@@ -205,7 +228,8 @@ def is_likely_text_file(file_path: Path) -> bool:
     }
     if file_path.suffix.lower() in non_text_exts:
         return False
-    mime_type, _ = mimetypes.guess_type(file_path)
+
+    mime_type = get_mime_type(file_path)
     if (
         mime_type
         and not mime_type.startswith("text/")
